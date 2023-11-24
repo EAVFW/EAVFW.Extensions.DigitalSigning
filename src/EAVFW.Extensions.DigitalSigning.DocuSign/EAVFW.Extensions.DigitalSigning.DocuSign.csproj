@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="DocuSign.eSign.dll" Version="6.8.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="7.0.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Workflows\" />
+	  <Folder Include="NewFolder\" />
+	</ItemGroup>
+</Project>
