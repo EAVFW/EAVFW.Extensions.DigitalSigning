@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EAVFW.Extensions.DigitalSigning", "src\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning.csproj", "{1694113F-D011-4A14-AE3B-0CA3DF0E8608}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EAVFW.Extensions.DigitalSigning", "src\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning.csproj", "{1694113F-D011-4A14-AE3B-0CA3DF0E8608}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EAVFW.Extensions.DigitalSigning.DocuSign", "src\EAVFW.Extensions.DigitalSigning.DocuSign\EAVFW.Extensions.DigitalSigning.DocuSign.csproj", "{ED0C3DB9-C88D-4A6B-B38B-F22C40C5FDA2}"
 EndProject

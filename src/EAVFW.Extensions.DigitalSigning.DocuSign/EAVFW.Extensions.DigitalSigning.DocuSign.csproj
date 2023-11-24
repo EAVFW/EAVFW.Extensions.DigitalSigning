@@ -24,7 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning.csproj" />
+	  <ProjectReference Include="..\EAVFW.Extensions.DigitalSigning\EAVFW.Extensions.DigitalSigning.csproj" />
 	</ItemGroup>
 
 </Project>
