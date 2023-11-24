@@ -1,3 +1,303 @@
 {
-	
+	"variables": {
+		"sitemaps": {
+			"docusign": {
+				"app": "Letter of Indemnity",
+				"area": "Docusign",
+				"group": ""
+			}
+		}
+	},
+	"entities": {
+		"Digital Signing Provider": {
+			"pluralName": "Digital Signing Providers",
+			"sitemap": "[variables('sitemaps').docusign]",
+			"description": "A entity to keep auth state and metadata related to the digital signing provider.",
+			"attributes": {
+				"[merge()]": "[variables('audit')]",
+				"Provider Name": { "isPrimaryField": true },
+				"Auth Context": { "type": "MultilineText" },
+				"Status": {
+					"type": {
+						"type": "Choice",
+						"name": "Digital Signing Provider Status",
+						"options": {
+							"Initializing": 0,
+							"Initialized": 10,
+							"Ready": 50
+						}
+					}
+				}
+			},
+			"wizards": {
+				"NEW_SIGNING_PROVIDER": {
+					"title": "Add Signing Provider Integration",
+					"triggers": {
+						"New Form Loaded": {
+							"form": "Main Information"
+						},
+						"New Ribbon": {
+							"ribbon": "NEW"
+						}
+					},
+					"tabs": {
+						"Select Provider": {
+							"columns": {
+								"OneColumn": {
+									"sections": {
+										"Intro": {
+											"html": "<div>Enter the Docu Sign Integration Context<div>"
+										},
+										"Select Provider": {
+
+											"schema": {
+												"$schema": "http://json-schema.org/draft-04/schema#",
+												"type": "object",
+												"properties": {
+													"provider": {
+														"title": "Digital Signing Provider",
+														"enumNames": "@jsonPath(ctx(),'$.providers[*].name')",
+														"enum": "@ctx()?.providers"
+													}
+													//"baseurl": {
+													//  "type": "string",
+													//  "title": "Docusign Base Url",
+													//  "default": "https://account-d.docusign.com/"
+													//},
+													//"integrationKey": {
+													//  "title": "Integration Key",
+													//  "type": "string",
+													//  "format": "password"
+													//},
+													//"secret": {
+													//  "title": "Secret Key",
+													//  "type": "string",
+													//  "format": "password"
+													//}
+												},
+												"required": [
+													"provider"
+													//"baseurl",
+													//"integrationKey",
+													//"secret"
+												]
+											}
+										},
+										"Provider Configuration": "@coalesce(ctx()?.provider?.configuration,json('{\"visible\": false }'))"
+									}
+								}
+							},
+							"onTransitionIn": {
+								"workflow": "WizardDigitalSigningInitializeWorkflow",
+								"message": {
+									"title": "Gathering Digital Signing Provider Information"
+								}
+							},
+							"onTransitionOut": {
+								"workflow": "WizardDigitalSigningInitializeAuthContextWorkflow"
+							}
+						},
+						"Consent": {
+							"columns": {
+								"OneColumn": {
+									"sections": {
+										"Intro": {
+											"html": "<div>Please Open the following <a href=\"@ctx()?.consentUrl\">consent url<a/> to give consent to @ctx().provider.name<div>"
+										}
+									}
+								}
+
+							},
+							"onTransitionOut": {
+								"workflow": "WizardDigitalSigningValidateConsentWorkflow"
+							}
+						},
+						"Pick Account": {
+							"columns": {
+								"OneColumn": {
+									"sections": {
+										"Pick Account": {
+											"logicalName": "account",
+											"schema": {
+												"$schema": "http://json-schema.org/draft-04/schema#",
+												"type": "object",
+												"properties": {
+													"account": {
+														"enumNames": "@jsonPath(ctx(),'$.accounts[*].account_name')",
+														"enum": "@ctx()?.accounts"
+													}
+												}
+											}
+										}
+									}
+								}
+							},
+							"onTransitionOut": {
+								"workflow": "WizardDigitalSigningMakeActiveWorkflow"
+							},
+							"actions": {
+								"Make Active": {
+									"text": "Make Active"
+								}
+							}
+						}
+					}
+				}
+			}
+
+		},
+		"Signing Request": {
+			"pluralName": "Signing Requests",
+			"sitemap": "[variables('sitemaps').docusign]",
+			"description": "An entity to represent a signing request with docusign",
+			"attributes": {
+				"[merge()]": "[variables('audit')]",
+				"Name": { "isPrimaryField": true },
+				"Requested On": {
+					"type": "DateTime"
+				},
+				"Completed On": {
+					"type": "DateTime"
+				}
+			},
+			"forms": {
+				"Main Information": {
+					"type": "Main",
+					"name": "Main Information",
+					"layout": {
+						"tabs": {
+							"TAB_General": "[variables('TAB_General')]",
+							"TAB_Documents": {
+								"title": "Documents",
+								"locale": {
+									"1030": {
+										"title": "Dokumenter"
+									}
+								},
+								"columns": "[variables('layouts').OneColumnTemplate]"
+							},
+							"TAB_Recipients": {
+								"title": "Recipients",
+								"locale": {
+									"1030": {
+										"title": "Modtagerer"
+									}
+								},
+								"columns": "[variables('layouts').OneColumnTemplate]"
+							},
+							"TAB_Administrative": "[variables('TAB_Administrative')]"
+						}
+					},
+					"columns": {
+						"[merge()]": "[variables('TAB_Administrative_Columns')]",
+						"Name": "[variables('PrimaryInformation')]",
+						"Requested On": "[variables('PrimaryInformation')]",
+						"Signed On": "[variables('PrimaryInformation')]"
+					}
+				}
+			},
+			"views": {
+				"All Signing Requests": {
+					"columns": {
+						"Name": {},
+						"Created On": { "sorted": "descending" }
+					}
+				}
+			}
+		},
+		"Signing Request Document": {
+			"pluralName": "Signing Request Documents",
+			"description": "A document that needs to be signed as part of the request. Allowing bundling mutliple documents for one request",
+			"attributes": {
+				"[merge()]": "[variables('audit')]",
+				"Name": { "isPrimaryField": true },
+				"Request": {
+					"type": {
+						"type": "lookup",
+						"referenceType": "Signing Request",
+						"forms": {
+							"Main": {
+								"type": "Main",
+								"name": "Main Information",
+								"tab": "TAB_Documents",
+								"column": "COLUMN_First",
+								"section": "SECTION_General"
+							}
+						}
+					}
+				},
+				"Document": {
+					"description": "The document that should be signed by",
+					"type": {
+						"type": "lookup",
+						"referenceType": "Document"
+					}
+				}
+			},
+			"views": {
+				"All Signing Requests Documents": {
+					"columns": {
+						"Name": {},
+						"Document": {},
+						"Created On": { "sorted": "descending" }
+					}
+				}
+			}
+		},
+		"Signing Request Participant": {
+			"pluralName": "Signing Request Participants",
+			"attributes": {
+				"[merge()]": "[variables('audit')]",
+				"Name": { "isPrimaryField": true },
+				"Purpose": {
+					"type": {
+						"type": "Choice",
+						"name": "Signing Request Participant Purpose",
+						"options": {
+							"Signer": 0,
+							"Viewer": 1,
+							"Admin": 2
+						}
+					}
+				},
+				"Request": {
+					"type": {
+						"type": "lookup",
+						"referenceType": "Signing Request",
+						"forms": {
+							"Main": {
+								"type": "Main",
+								"name": "Main Information",
+								"tab": "TAB_Recipients",
+								"column": "COLUMN_First",
+								"section": "SECTION_General"
+							}
+						}
+					}
+				},
+				"Participant": {
+					"type": {
+						"type": "lookup",
+						"referenceType": "Identity"
+					}
+				},
+				"Return Url": {
+					"type": {
+						"type": "Text",
+						"maxLength": 255
+					}
+				}
+			},
+			"views": {
+				"All Signing Requests Participants": {
+					"columns": {
+						"Name": {},
+						"Participant": {},
+						"Created On": { "sorted": "descending" }
+					}
+				}
+			}
+		}
+
+	}
 }
