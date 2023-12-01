@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -36,6 +36,8 @@ namespace EAVFW.Extensions.DigitalSigning.Workflows
                         {
 
                             ["providerid"]= "@triggerBody()?.data?.values?.recordId",
+                            ["providerName"]=  "@triggerBody()?.data?.values?.provider?.name",
+                            ["accountid"]= "@triggerBody()?.data?.values?.account?.account_id",
                         }
                     }, 
                 }

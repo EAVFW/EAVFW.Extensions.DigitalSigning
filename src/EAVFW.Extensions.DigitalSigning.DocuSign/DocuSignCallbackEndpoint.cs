@@ -1,4 +1,4 @@
-﻿using EAVFramework;
+using EAVFramework;
 using EAVFramework.Endpoints.Results;
 using EAVFramework.Hosting;
 using EAVFW.Extensions.DigitalSigning.Actions;
@@ -22,13 +22,13 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly EAVDBContext<TContext> _db;
-        private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly IDigitalSigningAuthContextProtector _dataProtectionProvider;
         private readonly Base64UrlEncoder base64UrlEncoder;
 
         public DocuSignCallbackEndpoint(
             IHttpClientFactory httpClientFactory, 
             EAVDBContext<TContext> db,
-            IDataProtectionProvider dataProtectionProvider,
+            IDigitalSigningAuthContextProtector dataProtectionProvider,
             Base64UrlEncoder base64UrlEncoder)
         {
             this._httpClientFactory = httpClientFactory;
@@ -38,7 +38,7 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
         }
         public async Task<IEndpointResult> ProcessAsync(HttpContext context)
         {
-            var protecter = _dataProtectionProvider.CreateProtector("DigitalSigning");
+           
 
             var m = new IdentityModel.Client.AuthorizeResponse(context.Request.QueryString.Value);
              
@@ -46,7 +46,7 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
             var provider = await _db.Set<TSigningProvider>().FindAsync(Guid.Parse(m.State));
             var http = _httpClientFactory.CreateClient();
 
-            var authContext = JsonSerializer.Deserialize< DigitalSigningContext>(protecter.Unprotect(provider.AuthContext));
+            var authContext = _dataProtectionProvider.UnprotectAuthContext(provider.AuthContext); 
 
             var response = await http.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
@@ -81,7 +81,8 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
             //{ "sub":"03ee9fd7-866a-4a9f-89ac-5a05638803be","name":"Poul Kjeldager","given_name":"Poul","family_name":"Kjeldager","created":"2023-05-15T01:11:27","email":"info@kjeldager.com","accounts":[{ "account_id":"bf48a901-43f9-4a99-a538-2eea9cbeb91e","is_default":true,"account_name":"Kjeldager Drift ApS","base_uri":"https://demo.docusign.net"}]}
 
 
-            provider.AuthContext = protecter.Protect(JsonSerializer.Serialize(authContext));
+            provider.AuthContext = _dataProtectionProvider.ProtectAuthContext(authContext);
+
             provider.Status = (TSigningProviderStatus)Enum.ToObject(typeof(TSigningProviderStatus), Constants.SigningProviderInitialized);
 
             await _db.SaveChangesAsync(new ClaimsPrincipal(new ClaimsIdentity(new Claim[] {

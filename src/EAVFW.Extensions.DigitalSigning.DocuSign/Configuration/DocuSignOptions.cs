@@ -1,4 +1,4 @@
-﻿namespace EAVFW.Extensions.DigitalSigning.DocuSign.Configuration
+namespace EAVFW.Extensions.DigitalSigning.DocuSign.Configuration
 {
     public class DocuSignRSAPair
     {
@@ -12,5 +12,6 @@
         public string Secret { get; set; }
         public DocuSignRSAPair RSA { get; set; }
         public string BaseUrl { get;  set; }
+        public string APIBaseUrl { get; set; }
     }
 }

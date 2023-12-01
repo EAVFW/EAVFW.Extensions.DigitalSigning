@@ -1,37 +1,89 @@
-﻿using DocuSign.eSign.Model;
+using DocuSign.eSign.Model;
+using EAVFramework;
+using EAVFW.Extensions.DigitalSigning.Actions;
+using EAVFW.Extensions.Documents;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
-
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using DocuDocument = DocuSign.eSign.Model.Document;
 
 namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
 {
-    public class DocusignClient
+    
+    public class DocusignClient<TDocument> 
+        where TDocument : DynamicEntity, IDocumentEntity
     {
-        public HttpClient HttpClient { get; }
+        
+        private readonly HttpClient _httpClient;
+        private readonly DocuSignContext _digitalSigningContext;
+        private readonly IDigitalSigningAuthContextProtector _digitalSigningAuthContextProtector;
 
-        public string AccountId { get; } = "bf48a901-43f9-4a99-a538-2eea9cbeb91e";
+        
 
-        public DocusignClient(HttpClient httpClient)
+       // public string AccountId { get; } = "bf48a901-43f9-4a99-a538-2eea9cbeb91e";
+
+        public DocusignClient(HttpClient httpClient, DocuSignContext digitalSigningContext)
         {
-            HttpClient = httpClient;
+            _httpClient = httpClient;
+            _digitalSigningContext = digitalSigningContext;
+           
         }
 
-        public EnvelopeDefinition MakeEnvelope(string clientuserid, string signerEmail, string signerName)
+        public Task<HttpResponseMessage> PostAsJsonAsync(string url, object payload)
         {
-            byte[] buffer = System.IO.File.ReadAllBytes("C:\\Users\\PoulKjeldagerSorense\\Downloads\\testdoc.pdf");
+            var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload),Encoding.UTF8,"application/json")
+            };
+            req.Options.Set(DocuSignContext.DigitalSigningContextKey, _digitalSigningContext);
 
-            EnvelopeDefinition envelopeDefinition = new EnvelopeDefinition();
+            return this._httpClient.SendAsync(req);
+        }
+        public async Task<EnvelopeDefinition> MakeEnvelopeAsync(string clientuserid, string signerEmail, string signerName, TDocument document)
+        {
+            // byte[] buffer = System.IO.File.ReadAllBytes("C:\\Users\\PoulKjeldagerSorense\\Downloads\\testdoc.pdf");
+
+
+            async Task<byte[]> GetData()
+            {
+
+                if (document.Compressed ?? false)
+                {
+                    var data = new MemoryStream();
+
+                    using (var stream = new GZipStream(new MemoryStream(document.Data), CompressionMode.Decompress))
+                    {
+
+                        await stream.CopyToAsync(data);
+
+                    }
+
+                    return data.ToArray();
+                }
+
+                return document.Data;
+            }
+
+
+            var data = await GetData();
+
+            EnvelopeDefinition envelopeDefinition = new EnvelopeDefinition()
+            { 
+            };
             envelopeDefinition.EmailSubject = "Please sign this document";
             var doc1 = new DocuDocument();
 
-            string doc1b64 = Convert.ToBase64String(buffer);
+            string doc1b64 = Convert.ToBase64String(data);
 
             doc1.DocumentBase64 = doc1b64;
-            doc1.Name = "Lorem Ipsum"; // can be different from actual file name
-            doc1.FileExtension = "pdf";
-            doc1.DocumentId = "3";
+            doc1.Name = document.Name;// "Lorem Ipsum"; // can be different from actual file name
+            doc1.FileExtension = Path.GetExtension(document.Name).Trim('.');// "pdf";
+            doc1.DocumentId = "1";// document.Id.ToString();
 
             // The order in the docs array determines the order in the envelope
             envelopeDefinition.Documents = new List<DocuDocument> { doc1 };
@@ -54,15 +106,16 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
             // documents for matching anchor strings.
             SignHere signHere1 = new SignHere
             {
-                AnchorString = "/sn1/",
+                AnchorString = "signature",
                 AnchorUnits = "pixels",
-                AnchorXOffset = "10",
-                AnchorYOffset = "20"
+                AnchorXOffset = "-10",
+                AnchorYOffset = "-20", 
             };
             // Tabs are set per recipient / signer
             Tabs signer1Tabs = new Tabs
             {
-                SignHereTabs = new List<SignHere> { signHere1 }
+                SignHereTabs = new List<SignHere> { signHere1 },
+
             };
             signer1.Tabs = signer1Tabs;
 
@@ -80,7 +133,7 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
             return envelopeDefinition;
         }
 
-        public RecipientViewRequest MakeRecipientViewRequest(string clientuserid, string signerEmail, string signerName)
+        public RecipientViewRequest MakeRecipientViewRequest(string clientuserid, string signerEmail, string signerName, string returnUrl)
         {
             // Data for this method
             // signerEmail 
@@ -97,7 +150,7 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
             // the DocuSign signing ceremony. It's usually better to use
             // the session mechanism of your web framework. Query parameters
             // can be changed/spoofed very easily.
-            viewRequest.ReturnUrl = "https://delegate.dk?state=123";
+            viewRequest.ReturnUrl = returnUrl;
 
             // How has your app authenticated the user? In addition to your app's
             // authentication, you can include authenticate steps from DocuSign.

@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace EAVFW.Extensions.DigitalSigning.Actions
 {
@@ -21,5 +21,8 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
 
         [JsonPropertyName("rsa_private")]
         public string PrivateRSA { get; set; }
+
+        [JsonPropertyName("account")]
+        public DocusignAccount Account { get; set; }
     }
 }

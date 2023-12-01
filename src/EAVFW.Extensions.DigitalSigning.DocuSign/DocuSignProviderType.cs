@@ -1,4 +1,4 @@
-﻿using EAVFW.Extensions.DigitalSigning.Abstractions;
+using EAVFW.Extensions.DigitalSigning.Abstractions;
 using System;
 using Microsoft.Extensions.Options;
 using EAVFW.Extensions.DigitalSigning.DocuSign.Configuration;
@@ -13,6 +13,7 @@ using EAVFramework;
 using System.Text.Json;
 using EAVFramework.Endpoints;
 using System.Security.Claims;
+using System.Linq;
 
 namespace EAVFW.Extensions.DigitalSigning.DocuSign
 {
@@ -23,12 +24,12 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
         where TSigningProviderStatus : struct, IConvertible
     {
         private readonly IOptions<DocuSignOptions> options;
-        private readonly DigitalSigningAuthContextProtector<TContext, TSigningProvider, TSigningProviderStatus> signingAuthContextProtector;
+        private readonly IDigitalSigningAuthContextProtector signingAuthContextProtector;
         private readonly EAVDBContext<TContext> db;
 
         public DocuSignProviderType(
             IOptions<DocuSignOptions> options,
-            DigitalSigningAuthContextProtector<TContext,TSigningProvider,TSigningProviderStatus> signingAuthContextProtector,
+            IDigitalSigningAuthContextProtector signingAuthContextProtector,
             EAVDBContext<TContext> db
             )
         {
@@ -37,6 +38,21 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
             this.db = db;
         }
         public override string ProviderName => "DocuSign";
+
+        public override async Task ActivateProviderAsync(Guid recordid, string accountid, ClaimsPrincipal user)
+        {
+
+            var authContext = await signingAuthContextProtector.UnprotectAuthContext(recordid);
+
+            var userinfo = authContext.UserInfoResponse;
+            var claims = JsonDocument.Parse(userinfo).RootElement.ToClaims();
+
+            var accounts = claims.Where(c => c.Type == "accounts").Select(c => JsonSerializer.Deserialize<DocusignAccount>(c.Value)).ToArray();
+
+            authContext.Account = accounts.FirstOrDefault(x => x.AccountId == accountid);
+
+            await signingAuthContextProtector.ProtectAuthContextAsync(recordid, authContext);
+        }
 
         public override SingingProviderConfiguration GetConfigurationSchema()
         {
@@ -93,14 +109,19 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
             var baseUrl = config.BaseUrl ?? options.Value.BaseUrl;
             var integrationKey = config.IntegrationKey ?? options.Value.IntegrationKey;
             var secret = config.Secret ?? options.Value.Secret;
-
+            var rsa = config.RSA?.Private ?? options.Value.RSA.Private;
             var ru = new RequestUrl($"{baseUrl.Trim('/')}/oauth/auth");
 
             //  var state = $"baseurl={baseurl}&integrationKey={integrationKey}&";
-            var authcontext = new DigitalSigningContext { BaseUrl = baseUrl, ClientId = integrationKey, ClientSecret = secret, RedirectUrl = $"{digitalSigningOptions.CallbackBaseUrl.Trim('/')}/callbacks/docusign" };
+            var authcontext = new DigitalSigningContext { 
+                BaseUrl = baseUrl, 
+                ClientId = integrationKey,
+                ClientSecret = secret,
+                PrivateRSA = rsa,
+                RedirectUrl = $"{digitalSigningOptions.CallbackBaseUrl.Trim('/')}/callbacks/docusign" };
             var record = new TSigningProvider
             {
-                ProviderName = "Docusign",
+                ProviderName = ProviderName,
                 AuthContext = signingAuthContextProtector.Protect(JsonSerializer.Serialize(authcontext)),
                 Status = (TSigningProviderStatus)Enum.ToObject(typeof(TSigningProviderStatus), Constants.SigningProviderInitializing)
             };

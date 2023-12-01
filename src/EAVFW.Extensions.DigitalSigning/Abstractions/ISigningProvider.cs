@@ -1,4 +1,4 @@
-﻿using EAVFramework.Shared;
+using EAVFramework.Shared;
 using EAVFW.Extensions.DigitalSigning.Actions;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -59,10 +59,14 @@ namespace EAVFW.Extensions.DigitalSigning.Abstractions
             return (ValueTask<object>)method.Invoke(this, new object[] { options, config, user });
         }
 
+        public abstract Task ActivateProviderAsync(Guid recordid, string accountid, ClaimsPrincipal user);
+
     }
     public abstract class SigningProviderType<TConfiguration> : SigningProviderType
     {
         public abstract ValueTask<object> InitializeAuthContextAsync(DigitalSigningOptions options, TConfiguration configuration, ClaimsPrincipal user);
+
+      
 
         public override Type GetConfigurationType() => typeof(TConfiguration);
 

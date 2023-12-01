@@ -1,4 +1,4 @@
-﻿using EAVFramework;
+using EAVFramework;
 using EAVFramework.Endpoints;
 using EAVFW.Extensions.DigitalSigning.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,10 +17,12 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
         where TSigningProviderStatus : struct, IConvertible
     {
         private readonly EAVDBContext<TContext> _db;
+        private readonly IEnumerable<SigningProviderType> _providerTypes;
 
-        public WizardDigitalSigningMakeActiveAction(EAVDBContext<TContext> db)
+        public WizardDigitalSigningMakeActiveAction(EAVDBContext<TContext> db, IEnumerable<SigningProviderType> providerTypes)
         {
             this._db = db;
+            _providerTypes = providerTypes;
         }
         public async ValueTask<object> ExecuteAsync(IRunContext context, IWorkflow workflow, IAction action)
         {
@@ -28,6 +30,12 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
             var provider = await _db.Set<TSigningProvider>().FindAsync(recordid);
 
             provider.Status = (TSigningProviderStatus)Enum.ToObject(typeof(TSigningProviderStatus), Constants.SigningProviderReady);
+
+
+            var providerType = _providerTypes.FirstOrDefault(x => string.Equals( x.ProviderName , provider.ProviderName,StringComparison.OrdinalIgnoreCase));
+
+            await providerType.ActivateProviderAsync(recordid, action.Inputs["accountid"].ToString(),context.GetRunningPrincipal() );
+
 
 
             await _db.SaveChangesAsync(context.GetRunningPrincipal());

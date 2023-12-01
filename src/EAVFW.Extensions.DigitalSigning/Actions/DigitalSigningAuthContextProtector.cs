@@ -1,4 +1,4 @@
-﻿using EAVFramework;
+using EAVFramework;
 using EAVFramework.Endpoints;
 using EAVFW.Extensions.DigitalSigning.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
@@ -11,7 +11,10 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
 {
     public interface IDigitalSigningAuthContextProtector : IDataProtector
     {
+        DigitalSigningContext UnprotectAuthContext(string authcontext);
+        string ProtectAuthContext(DigitalSigningContext authcontext);
         Task<DigitalSigningContext> UnprotectAuthContext(Guid recordid);
+        Task ProtectAuthContextAsync(Guid recordid, DigitalSigningContext authcontext);
     }
     public class DigitalSigningAuthContextProtector <TDynamicContext, TSigningProvider, TSigningProviderStatus>  : IDigitalSigningAuthContextProtector
         where TDynamicContext : DynamicContext
@@ -38,9 +41,19 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
              
         }
 
+        public string ProtectAuthContext(DigitalSigningContext authContext)
+        {
+            return this.Protect(JsonSerializer.Serialize(authContext));
+        }
+
         public byte[] Unprotect(byte[] protectedData)
         {
             return this._dataProtectionProvider.CreateProtector("DigitalSigning").Unprotect(protectedData);
+        }
+
+        public DigitalSigningContext UnprotectAuthContext(string authcontext)
+        {
+            return JsonSerializer.Deserialize<DigitalSigningContext>(this.Unprotect(authcontext));
         }
 
         public async Task<DigitalSigningContext> UnprotectAuthContext(Guid recordid)
@@ -50,6 +63,14 @@ namespace EAVFW.Extensions.DigitalSigning.Actions
 
             var authContext = JsonSerializer.Deserialize<DigitalSigningContext>(this.Unprotect(provider.AuthContext));
             return authContext;
+        }
+        public async Task ProtectAuthContextAsync(Guid recordid, DigitalSigningContext authContext)
+        {
+            var provider = await _db.Set<TSigningProvider>().FindAsync(recordid);
+
+            provider.AuthContext = this.ProtectAuthContext(authContext);
+
+          
         }
     }
 }
