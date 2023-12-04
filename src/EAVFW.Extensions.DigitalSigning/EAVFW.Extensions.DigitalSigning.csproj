@@ -20,6 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
 		<PackageReference Include="IdentityModel" Version="6.2.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
 	</ItemGroup>
@@ -31,7 +32,7 @@
 	</ItemGroup>
 	<ItemGroup Condition="$(UseEAVFromNuget) != 'false'">
         <PackageReference Include="EAVFramework" Version="$(EAVFrameworkVersion)" />
-		<PackageReference Include="EAVFW.Extensions.WorkflowEngine" Version="3.1.4" />
+		<PackageReference Include="EAVFW.Extensions.WorkflowEngine" Version="3.1.6" />
 	</ItemGroup>
 
 </Project>

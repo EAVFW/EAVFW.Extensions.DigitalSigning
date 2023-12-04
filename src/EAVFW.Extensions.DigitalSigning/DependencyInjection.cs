@@ -1,6 +1,7 @@
-﻿using EAVFramework;
+using EAVFramework;
 using EAVFW.Extensions.DigitalSigning.Abstractions;
 using EAVFW.Extensions.DigitalSigning.Actions;
+using EAVFW.Extensions.DigitalSigning.OpenXML;
 using EAVFW.Extensions.DigitalSigning.Workflows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,7 @@ namespace EAVFW.Extensions.DigitalSigning
             where TSigningProvider : DynamicEntity, ISigningProvider<TSigningProviderStatus>, new()
             where TSigningProviderStatus : struct, IConvertible
         {
-
+            services.AddScoped<OpenXMLService>();
             services.AddWorkflow<WizardDigitalSigningInitializeWorkflow>();
             services.AddAction<WizardDigitalSigningGetProvidersActions<TContext, TSigningProvider, TSigningProviderStatus>>(WizardDigitalSigningGetProvidersActions);
 

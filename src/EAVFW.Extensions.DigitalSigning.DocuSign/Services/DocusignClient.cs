@@ -44,7 +44,7 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
 
             return this._httpClient.SendAsync(req);
         }
-        public async Task<EnvelopeDefinition> MakeEnvelopeAsync(string clientuserid, string signerEmail, string signerName, TDocument document)
+        public async Task<EnvelopeDefinition> MakeEnvelopeAsync(string clientuserid, string signerEmail, string signerName, TDocument document, Tabs tabs)
         {
             // byte[] buffer = System.IO.File.ReadAllBytes("C:\\Users\\PoulKjeldagerSorense\\Downloads\\testdoc.pdf");
 
@@ -99,25 +99,8 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
                 RecipientId = "1"
             };
 
-            // Create signHere fields (also known as tabs) on the documents,
-            // We're using anchor (autoPlace) positioning
-            //
-            // The DocuSign platform searches throughout your envelope's
-            // documents for matching anchor strings.
-            SignHere signHere1 = new SignHere
-            {
-                AnchorString = "signature",
-                AnchorUnits = "pixels",
-                AnchorXOffset = "-10",
-                AnchorYOffset = "-20", 
-            };
-            // Tabs are set per recipient / signer
-            Tabs signer1Tabs = new Tabs
-            {
-                SignHereTabs = new List<SignHere> { signHere1 },
-
-            };
-            signer1.Tabs = signer1Tabs;
+            
+            signer1.Tabs = tabs;
 
             // Add the recipient to the envelope object
             Recipients recipients = new Recipients

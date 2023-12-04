@@ -17,7 +17,7 @@ using System.Linq;
 
 namespace EAVFW.Extensions.DigitalSigning.DocuSign
 {
-    
+
     public class DocuSignProviderType<TContext, TSigningProvider, TSigningProviderStatus> : SigningProviderType<DocuSignOptions>
         where TContext : DynamicContext
         where TSigningProvider : DynamicEntity, ISigningProvider<TSigningProviderStatus>, new()
