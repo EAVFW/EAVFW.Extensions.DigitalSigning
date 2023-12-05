@@ -7,18 +7,45 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System;
+using EAVFW.Extensions.Manifest.SDK;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
 
 namespace EAVFW.Extensions.DigitalSigning.OpenXML
 {
+    public enum InputType
+    {
+        [EnumMember(Value = Constants.InputTypes.Text)]
+        Text,
+        [EnumMember(Value = Constants.InputTypes.MultilineText)]
+        MultilineText,
+        [EnumMember(Value = Constants.InputTypes.RTF)]
+        RTF,       
+        [EnumMember(Value = Constants.InputTypes.Date)]
+        Date,       
+    }
+
     public class OpenXMLService
     {
-        public string GetSdtTitle(SdtProperties props)
+        private readonly ISchemaNameManager _schemaNameManager;
+
+        public OpenXMLService(ISchemaNameManager schemaNameManager)
+        {
+            _schemaNameManager = schemaNameManager;
+        }
+        public string GetSchemaName(SdtProperties props)
+        {
+            return _schemaNameManager.ToSchemaName(GetSdtAliasValue(props));
+        }
+        public string GetSdtAliasValue(SdtProperties props)
         {
 
             var sdtAlias = props.GetFirstChild<SdtAlias>();
             if (sdtAlias != null)
             {
-                return Regex.Replace(sdtAlias.Val.Value.ToLower(), @"[^a-zA-Z0-9]", "");
+                return sdtAlias.Val?.Value;
+              //  return Regex.Replace(sdtAlias.Val.Value.ToLower(), @"[^a-zA-Z0-9]", "");
             }
 
             return null;
@@ -81,16 +108,76 @@ namespace EAVFW.Extensions.DigitalSigning.OpenXML
             return compressedStream.ToArray();
         }
 
-        public bool IsMatch(SdtElement cc, IControlElement controlElement)
+        public bool IsMatch(SdtElement source, IControlElement target)
         {
-            var sdtProperties = cc.GetFirstChild<SdtProperties>();
-            var controlTitle = GetSdtTitle(sdtProperties);
-            var isMatch = string.Equals(controlTitle, controlElement.Title, StringComparison.OrdinalIgnoreCase);
-            //if (!isMatch)
-            //{
-            //    Console.WriteLine("Match: " + isMatch + "  ccTitle: " + controlTitle + "   ceTitle: " + controlElement.Title);
-            //}
+            var sdtProperties = source.GetFirstChild<SdtProperties>();
+            var controlTitle = _schemaNameManager.ToSchemaName(GetSdtAliasValue(sdtProperties));
+            var isMatch = string.Equals(controlTitle, target.SchemaName, StringComparison.OrdinalIgnoreCase);          
             return isMatch;
         }
+
+        private bool IsTagValidInputType(string tagValue, out InputType? inputType)
+        {
+            inputType = null;
+            // Check if the tagValue starts with "InputType:" and if the suffix matches any of the enum values
+            if (string.IsNullOrEmpty(tagValue) || !tagValue.StartsWith("InputType:")) return false;
+
+            var inputTypeName = tagValue["InputType:".Length..];
+            if( Enum.TryParse<InputType>(inputTypeName, out var inputtype))
+            {
+                inputType = inputtype;
+                return true;
+            }
+            return false;
+        }
+        public List<ControlElement> ExtractControlElements(WordprocessingDocument document)
+        {
+            var controlElements = new List<ControlElement>();
+            var contentControls = document.MainDocumentPart.Document.Descendants<SdtElement>();
+
+            foreach (var control in contentControls)
+            {
+                var tagElement = control.Descendants<Tag>().FirstOrDefault();
+
+                if (tagElement != null)
+                {
+                    var tags = tagElement.Val?.ToString().Split(',');
+                    var tagValue = tags.FirstOrDefault();
+
+                    if (IsTagValidInputType(tagValue, out var inputType))
+                    {
+                        var sdtProperties = control.GetFirstChild<SdtProperties>();
+                        if (sdtProperties != null)
+                        {
+                            // We only want one of each controlElement pr. title.
+                            // This is a way to populate multiple fields later on in the program by using the title property as the identifier.
+                            if (!controlElements.Any(ce => ce.SchemaName == _schemaNameManager.ToSchemaName( GetSdtAliasValue(sdtProperties))))
+                            {
+                                var title = GetSdtAliasValue(sdtProperties);
+                                var schemaName = _schemaNameManager.ToSchemaName(title);
+                                var isMultiline = IsMultilineControl(sdtProperties);
+                                
+                                controlElements.Add(
+                                    new ControlElement
+                                    {
+                                        Id = GetSdtId(sdtProperties) ?? 0,
+                                        DisplayName = title,
+                                        SchemaName = schemaName,
+                                        LogicalName = schemaName.ToLower(),
+                                        Placeholder = string.Join("", control.Descendants<Text>().Select(t => t.Text)).Trim(),
+                                        InputType = inputType == InputType.Text && isMultiline ? "MultilineText" : tagValue["InputType:".Length..],
+                                        Tags = tags.Skip(1).ToArray()
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            return controlElements;
+        }
+
+
     }
 }

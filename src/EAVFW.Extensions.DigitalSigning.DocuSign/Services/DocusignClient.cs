@@ -27,11 +27,13 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
 
        // public string AccountId { get; } = "bf48a901-43f9-4a99-a538-2eea9cbeb91e";
 
-        public DocusignClient(HttpClient httpClient, DocuSignContext digitalSigningContext)
+        public DocusignClient(HttpClient httpClient, DocuSignContext digitalSigningContext, IDigitalSigningAuthContextProtector digitalSigningAuthContextProtector)
         {
             _httpClient = httpClient;
             _digitalSigningContext = digitalSigningContext;
-           
+            _digitalSigningAuthContextProtector = digitalSigningAuthContextProtector;
+
+
         }
 
         public Task<HttpResponseMessage> PostAsJsonAsync(string url, object payload)
@@ -159,5 +161,21 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign.Services
             return viewRequest;
         }
 
+        public async Task<byte[]> GetDocumentAsync(string accountId, string envelopeId)
+        {
+            var authContext = await _digitalSigningAuthContextProtector.UnprotectAuthContext(_digitalSigningContext.SigningProviderID);
+
+            var req = new HttpRequestMessage(HttpMethod.Get, $"{authContext.Account.BaseUrl}/restapi/v2.1/accounts/{accountId}/envelopes/{envelopeId}/documents/1")
+            {
+                
+            };
+            req.Options.Set(DocuSignContext.DigitalSigningContextKey, _digitalSigningContext);
+
+            var result= await this._httpClient.SendAsync(req);
+
+            return await result.Content.ReadAsByteArrayAsync();
+
+          
+        }
     }
 }

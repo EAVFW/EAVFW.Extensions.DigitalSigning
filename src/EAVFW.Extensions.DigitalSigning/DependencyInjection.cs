@@ -11,14 +11,7 @@ using WorkflowEngine.Core;
 
 namespace EAVFW.Extensions.DigitalSigning
 {
-    public static class Constants
-    {
-        public const int SigningProviderInitializing = 0;
-
-        public const int SigningProviderInitialized = 10;
-
-        public const int SigningProviderReady = 50;
-    }
+   
     public static class DependencyInjection
     {
         public const string WizardDigitalSigningValidateConsentAction = "WizardDigitalSigningValidateConsentAction";

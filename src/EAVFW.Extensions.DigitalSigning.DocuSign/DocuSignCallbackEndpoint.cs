@@ -15,6 +15,7 @@ using System.Security.Claims;
 
 namespace EAVFW.Extensions.DigitalSigning.DocuSign
 {
+
     public class DocuSignCallbackEndpoint<TContext,TSigningProvider, TSigningProviderStatus> : IEndpointHandler<TContext>
         where TContext : DynamicContext
         where TSigningProvider : DynamicEntity, ISigningProvider<TSigningProviderStatus>
@@ -23,18 +24,18 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly EAVDBContext<TContext> _db;
         private readonly IDigitalSigningAuthContextProtector _dataProtectionProvider;
-        private readonly Base64UrlEncoder base64UrlEncoder;
+        
 
         public DocuSignCallbackEndpoint(
             IHttpClientFactory httpClientFactory, 
             EAVDBContext<TContext> db,
-            IDigitalSigningAuthContextProtector dataProtectionProvider,
-            Base64UrlEncoder base64UrlEncoder)
+            IDigitalSigningAuthContextProtector dataProtectionProvider)
+             
         {
-            this._httpClientFactory = httpClientFactory;
-            this._db = db;
-            this._dataProtectionProvider = dataProtectionProvider;
-            this.base64UrlEncoder = base64UrlEncoder;
+            _httpClientFactory = httpClientFactory;
+            _db = db;
+            _dataProtectionProvider = dataProtectionProvider;
+            
         }
         public async Task<IEndpointResult> ProcessAsync(HttpContext context)
         {

@@ -1,6 +1,7 @@
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EAVFW.Extensions.DigitalSigning.OpenXML;
+using EAVFW.Extensions.Manifest.SDK;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +13,12 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
     public class DocuSignFieldManager
     {
         private readonly OpenXMLService _openXMLService;
+        private readonly ISchemaNameManager _schemaNameManager;
 
-        public DocuSignFieldManager(OpenXMLService openXMLService)
+        public DocuSignFieldManager(OpenXMLService openXMLService, ISchemaNameManager schemaNameManager)
         {
             _openXMLService = openXMLService;
+            _schemaNameManager = schemaNameManager;
         }
         public bool IsTagValidDocuSignFieldType(string tagValue, out DocuSignField? fieldtype)
         {
@@ -52,15 +55,18 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
                         {
                             // We only want one of each controlElement pr. title.
                             // This is a way to populate multiple fields later on in the program by using the title property as the identifier.
-                            if (!controlElements.Any(ce => ce.Title.ToLower() == _openXMLService.GetSdtTitle(sdtProperties).ToLower()))
+                            if (!controlElements.Any(ce =>  ce.SchemaName == _schemaNameManager.ToSchemaName( _openXMLService.GetSdtAliasValue(sdtProperties))))
                             {
-                                var title = _openXMLService.GetSdtTitle(sdtProperties);
-                                var result = title == null ? "" : Regex.Replace(title.ToLower(), @"[^a-zA-Z0-9]", "");
+                                var displayName = _openXMLService.GetSdtAliasValue(sdtProperties);
+                                var schemaName = _schemaNameManager.ToSchemaName(displayName);
+                               
                                 controlElements.Add(
                                     new DocusignControlElement
                                     {
                                         Id = _openXMLService.GetSdtId(sdtProperties) ?? 0,
-                                        Title = result,
+                                        DisplayName = displayName,
+                                        SchemaName = schemaName,
+                                        LogicalName = schemaName.ToLower(),
                                         Field = tagValue["DocuSign:".Length..]
                                     }
                                 );

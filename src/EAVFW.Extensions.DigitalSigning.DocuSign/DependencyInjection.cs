@@ -19,6 +19,7 @@ using EAVFW.Extensions.DigitalSigning.DocuSign.Services;
 using System.Collections.Concurrent;
 using System.Net.Http;
 using EAVFW.Extensions.Documents;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EAVFW.Extensions.DigitalSigning.DocuSign
 {
@@ -61,18 +62,21 @@ namespace EAVFW.Extensions.DigitalSigning.DocuSign
     public static class DependencyInjection
     {
 
-        public static IServiceCollection AddDocuSignSigningProvider<TDynamicContext,TSigningProvider, TSigningProviderStatus,TDocument>(this IServiceCollection services)
+        public static IServiceCollection AddDocuSignSigningProvider<TDynamicContext,TSigningProvider, TSigningProviderStatus,TSigningRequest,TDocument>(this IServiceCollection services)
             where TDynamicContext : DynamicContext                         
             where TSigningProvider : DynamicEntity, ISigningProvider<TSigningProviderStatus>, new()
             where TSigningProviderStatus : struct, IConvertible
+            where TSigningRequest : DynamicEntity, ISigningRequest<TSigningProvider,TSigningProviderStatus>
             where TDocument : DynamicEntity, IDocumentEntity
         {
 
             services.AddScoped<SigningProviderType, DocuSignProviderType<TDynamicContext,TSigningProvider,TSigningProviderStatus>>();
             services.AddOptions<DocuSignOptions>().Configure<IConfiguration>((options, config) => config.GetSection("DigitalSigning:DocuSign").Bind(options));
             services.AddSingleton<Base64UrlEncoder>();
-            services.AddEndpoint<DocuSignCallbackEndpoint<TDynamicContext,TSigningProvider, TSigningProviderStatus>, TDynamicContext>("DocusignCallback", "/callbacks/docusign", "GET")
+            services.AddEndpoint<DocuSignCallbackEndpoint<TDynamicContext,TSigningProvider, TSigningProviderStatus>, TDynamicContext>("DocusignCallbackEndpoint", "/callbacks/docusign", "GET")
                 .IgnoreRoutePrefix();
+            services.AddEndpoint<DocuSignConnectEventsEndpoint<TDynamicContext,TSigningRequest, TSigningProvider, TSigningProviderStatus,TDocument>, TDynamicContext>("DocuSignConnectEventsEndpoint", "/providers/docusign/events", "POST")
+             .IgnoreRoutePrefix().WithMetadata(new AllowAnonymousAttribute());
 
 
             services.AddScoped<DocuSignContext>();
