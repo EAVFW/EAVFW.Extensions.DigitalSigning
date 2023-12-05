@@ -5,6 +5,7 @@ using EAVFW.Extensions.DigitalSigning.DocuSign.Configuration;
 using EAVFW.Extensions.DigitalSigning.DocuSign.Services;
 using IdentityModel.Client;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using System;
@@ -21,13 +22,13 @@ namespace EAVFW.Extensions.DigitalSigning.Services
 {
     public class DocusignHttpClientHandler : DelegatingHandler
     {
-        
+        private readonly ILogger<DocusignHttpClientHandler> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDigitalSigningAuthContextProtector _digitalSigningAuthContextProtector;
 
-        public DocusignHttpClientHandler(  IMemoryCache memoryCache, IDigitalSigningAuthContextProtector digitalSigningAuthContextProtector)
+        public DocusignHttpClientHandler( ILogger<DocusignHttpClientHandler> logger,  IMemoryCache memoryCache, IDigitalSigningAuthContextProtector digitalSigningAuthContextProtector)
         {
-           
+            _logger = logger;
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _digitalSigningAuthContextProtector = digitalSigningAuthContextProtector;
         }
@@ -109,21 +110,31 @@ namespace EAVFW.Extensions.DigitalSigning.Services
                         exp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600,
                         scope = "signature impersonation"
                     }));
-                    var jwtsignatur = Base64UrlEncode(SignData($"{jwtheader}.{jwtbody}", rsb_private_base64.Trim()));
-                    var jwt = $"{jwtheader}.{jwtbody}.{jwtsignatur}";
-                    //jwt = "eyJ0eXAiOiJqd3QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiIyMmQ0YWQwNy0xZmZkLTQwOTAtOWY0YS1lY2JmN2M0YWUxM2IiLCJzdWIiOiIwM2VlOWZkNy04NjZhLTRhOWYtODlhYy01YTA1NjM4ODAzYmUiLCJhdWQiOiJhY2NvdW50LWQuZG9jdXNpZ24uY29tIiwiaWF0IjoxNjg0MjM5MzkwLCJleHAiOjE2ODUyMzkzOTAsInNjb3BlIjoic2lnbmF0dXJlIGltcGVyc29uYXRpb24ifQ.hH1ZNQURNwgqaE6h5R5DxMXbBLwsy6G4PwRNAKeHuaXe_8-UkW9EBRK8sacHP31rV-_Hpf_VrqrFpfD4vc1JmOeTYeWzfjqxBBsGQ30veXmdUMYEE458xG25D0o1xQNbTj1bTM0hkV4CNWct2iyWJsXHl0emQdVsd5ktg_qcyN8Hjw93l8mIM4as-8jebENZp0B0SQrKKUrijsjjkbI4I0KpLkjpFfnEfSF2kJ2TjVk0c3-CHNP1wkVYiCsgw-KebdU0b0DJ3Ax3HFhoirGCpkjnF_LYJ0w9sHTFt36tRiIj3L-NOBZtkYOb2iSR7u9zeMOwBaqB1A7-z7UorsfiMQ";
-
-                    var http = new HttpClient();
-
-                    var rsp = await http.PostAsync($"{authContext.BaseUrl}/oauth/token", new FormUrlEncodedContent(new Dictionary<string, string>
+                    try
                     {
-                        ["assertion"] = jwt,
-                        ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-                    }));
+                        var jwtsignatur = Base64UrlEncode(SignData($"{jwtheader}.{jwtbody}", rsb_private_base64.Trim()));
+                        var jwt = $"{jwtheader}.{jwtbody}.{jwtsignatur}";
+                        //jwt = "eyJ0eXAiOiJqd3QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiIyMmQ0YWQwNy0xZmZkLTQwOTAtOWY0YS1lY2JmN2M0YWUxM2IiLCJzdWIiOiIwM2VlOWZkNy04NjZhLTRhOWYtODlhYy01YTA1NjM4ODAzYmUiLCJhdWQiOiJhY2NvdW50LWQuZG9jdXNpZ24uY29tIiwiaWF0IjoxNjg0MjM5MzkwLCJleHAiOjE2ODUyMzkzOTAsInNjb3BlIjoic2lnbmF0dXJlIGltcGVyc29uYXRpb24ifQ.hH1ZNQURNwgqaE6h5R5DxMXbBLwsy6G4PwRNAKeHuaXe_8-UkW9EBRK8sacHP31rV-_Hpf_VrqrFpfD4vc1JmOeTYeWzfjqxBBsGQ30veXmdUMYEE458xG25D0o1xQNbTj1bTM0hkV4CNWct2iyWJsXHl0emQdVsd5ktg_qcyN8Hjw93l8mIM4as-8jebENZp0B0SQrKKUrijsjjkbI4I0KpLkjpFfnEfSF2kJ2TjVk0c3-CHNP1wkVYiCsgw-KebdU0b0DJ3Ax3HFhoirGCpkjnF_LYJ0w9sHTFt36tRiIj3L-NOBZtkYOb2iSR7u9zeMOwBaqB1A7-z7UorsfiMQ";
 
-                    var tokenresponse = await rsp.Content.ReadAsStringAsync();
+                        var http = new HttpClient();
 
-                    return JToken.Parse(tokenresponse).SelectToken("$.access_token")?.ToString();
+                        var rsp = await http.PostAsync($"{authContext.BaseUrl}/oauth/token", new FormUrlEncodedContent(new Dictionary<string, string>
+                        {
+                            ["assertion"] = jwt,
+                            ["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+                        }));
+
+                        var tokenresponse = await rsp.Content.ReadAsStringAsync();
+
+                        return JToken.Parse(tokenresponse).SelectToken("$.access_token")?.ToString();
+                    }
+                    catch(FormatException format)
+                    {
+                        _logger.LogError("Failed to sign using invalid formated base64 data: " + rsb_private_base64.Trim());
+                        throw;
+                    }
+
+                   
                 });
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", resttoken);
             }
