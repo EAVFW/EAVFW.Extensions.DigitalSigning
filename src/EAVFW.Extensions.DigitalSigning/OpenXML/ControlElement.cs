@@ -15,6 +15,9 @@ namespace EAVFW.Extensions.DigitalSigning.OpenXML
         public string DisplayName { get; set; }
         public string[] Tags { get; internal set; }
 
+        public string Source { get; set; }
+        public string SourceField { get; set; }
+
         public override string ToString()
         {
             return $"{{Id:{Id}, DisplayName:{DisplayName}, InputType:{InputType}, Placeholder:{Placeholder}}}";
