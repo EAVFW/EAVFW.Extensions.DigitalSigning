@@ -13,7 +13,7 @@ namespace EAVFW.Extensions.DigitalSigning.OpenXML
         public string SchemaName { get; set; }
 
         public string DisplayName { get; set; }
-        public string[] Tags { get; internal set; }
+        public string[] Tags { get; set; }
 
         public string Source { get; set; }
         public string SourceField { get; set; }
